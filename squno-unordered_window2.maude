@@ -1,24 +1,13 @@
 omod SEQNO-UNORDERED is
     including MESSAGE-LOSS . --- msg wrapper and loss
-    protecting RANDOM .
-    protecting STRING + NAT + BOOL .
+    protecting RANDOM + STRING + NAT + BOOL + BOOL-LIST + STRING-LIST .
     sort Content . --- message content without sequence numbers
     subsort String < Content . --- "messages" are just strings
     subsort String < Oid .
     op ack : -> Content [ctor] . --- acknowledgment message
     --- sequence number wrapper:
     op _withSeqNo_ : Content Nat -> MsgContent [ctor] .
-    --- lists of strings:
-    sort StringList .
-    subsort String < StringList .
-    op nil : -> StringList [ctor] .
-    op mts : -> String [ctor] . 
-    op _++_ : StringList StringList -> StringList [ctor assoc id: nil] .
 
-    sort BoolList .
-    subsort Bool < BoolList .
-    op _::_ : BoolList BoolList -> BoolList [ctor assoc] .
-    op allTrue : BoolList -> Bool .
     class Sender | msgsToSend : StringList, sendBuffer : StringList, currentSeqNo : Nat, receiver : Oid , ackBuffer : BoolList , numWordsInBuffer : Nat , finishSend : Bool .
 
 
@@ -32,39 +21,36 @@ omod SEQNO-UNORDERED is
     var Ack Ack0 Ack1 : Bool . 
     var AckL : BoolList .
 
-    eq allTrue(true) = true .
-    eq allTrue(Ack :: AckL) = allTrue(Ack) and allTrue(AckL) .
-
     rl [start] :
-        < O : Sender | msgsToSend : S ++ SL, sendBuffer : nil , currentSeqNo : 0 >
+        < O : Sender | msgsToSend : S SL, sendBuffer : nil , currentSeqNo : 0 >
         =>  
-        < O : Sender | msgsToSend : SL, sendBuffer : S, currentSeqNo : 1 , ackBuffer : true :: true , numWordsInBuffer : 1 , finishSend : false > .
+        < O : Sender | msgsToSend : SL, sendBuffer : S, currentSeqNo : 1 , ackBuffer : true true , numWordsInBuffer : 1 , finishSend : false > .
 
     crl [load_word] : 
-        < O : Sender | msgsToSend : S ++ SL, sendBuffer : SL' , numWordsInBuffer : N , currentSeqNo : N' , ackBuffer : AckL , finishSend : B > 
+        < O : Sender | msgsToSend : S SL, sendBuffer : SL' , numWordsInBuffer : N , currentSeqNo : N' , ackBuffer : AckL , finishSend : B > 
         => 
-        < O : Sender | msgsToSend : SL, sendBuffer : SL' ++ S , numWordsInBuffer : s N , currentSeqNo : s N' , ackBuffer : false :: false > if ((N == 0 and allTrue(AckL)) or (N < 2 and N > 0)) and not B .
+        < O : Sender | msgsToSend : SL, sendBuffer : SL' S , numWordsInBuffer : s N , currentSeqNo : s N' , ackBuffer : false false > if ((N == 0 and allTrue(AckL)) or (N < 2 and N > 0)) and not B .
 
     crl [load_dummy_word] : 
         < O : Sender | msgsToSend : nil, sendBuffer : SL' , numWordsInBuffer : N , currentSeqNo : N' , finishSend : B > 
         => 
-        < O : Sender | msgsToSend : nil, sendBuffer : SL' ++ mts , numWordsInBuffer : s N , currentSeqNo : s N' , finishSend : true , ackBuffer : false :: false > if N < 2 and not B .
+        < O : Sender | msgsToSend : nil, sendBuffer : SL' mts , numWordsInBuffer : s N , currentSeqNo : s N' , finishSend : true , ackBuffer : false false > if N < 2 and not B .
 
     crl [sendCurrentMsgs0] :
-        < O : Sender | sendBuffer : S0 ++ S1, currentSeqNo : s N, receiver : O', numWordsInBuffer : N', finishSend : B >
+        < O : Sender | sendBuffer : S0 S1, currentSeqNo : s N, receiver : O', numWordsInBuffer : N', finishSend : B >
         =>  < O : Sender | sendBuffer : nil , numWordsInBuffer : 0 > ( msg (S0 withSeqNo N) from O to O' ) ( msg (S1 withSeqNo s N) from O to O' ) if ((N' == 2) or B) and (random(N) rem 2 == 0) .
 
     crl [sendCurrentMsgs1] :
-        < O : Sender | sendBuffer : S0 ++ S1, currentSeqNo : s N, receiver : O', numWordsInBuffer : N', finishSend : B >
+        < O : Sender | sendBuffer : S0 S1, currentSeqNo : s N, receiver : O', numWordsInBuffer : N', finishSend : B >
         =>  < O : Sender | sendBuffer : nil , numWordsInBuffer : 0 > ( msg (S1 withSeqNo s N) from O to O' ) ( msg (S0 withSeqNo N) from O to O' )  if ((N' == 2) or B) and (random(N) rem 2 == 1) .
 
     rl [receiveAck0] :
-        (msg (ack withSeqNo N) from O' to O) < O : Sender | currentSeqNo : s N, ackBuffer : Ack0 :: Ack1 >
-    => < O : Sender | ackBuffer : true :: Ack0 > .
+        (msg (ack withSeqNo N) from O' to O) < O : Sender | currentSeqNo : s N, ackBuffer : Ack0 Ack1 >
+    => < O : Sender | ackBuffer : true Ack0 > .
 
     rl [receiveAck1] :
-        (msg (ack withSeqNo s N) from O' to O) < O : Sender | currentSeqNo : s N, ackBuffer : Ack0 :: Ack1 >
-    => < O : Sender | ackBuffer : true :: true > .
+        (msg (ack withSeqNo s N) from O' to O) < O : Sender | currentSeqNo : s N, ackBuffer : Ack0 Ack1 >
+    => < O : Sender | ackBuffer : true true > .
 
     crl [rcvTooOldAck] : 
         (msg (ack withSeqNo N) from O' to O) < O : Sender | currentSeqNo : N' >
@@ -83,32 +69,32 @@ omod SEQNO-UNORDERED is
         ---     < O : Receiver | sendAck : true > msg (ack withSeqNo NZ) from O to O' .
 
         crl [rcvNewPacket0WORevPacket1] :
-            (msg (S withSeqNo s N) from O' to O) < O : Receiver | rcvBuffer : S0 ++ S1, rcvCheck : B0 :: B1 , greatestSeqNoRcvd : N >
+            (msg (S withSeqNo s N) from O' to O) < O : Receiver | rcvBuffer : S0 S1, rcvCheck : B0 B1 , greatestSeqNoRcvd : N >
         =>
-            < O : Receiver | rcvBuffer : S ++ S1 , rcvCheck :  true :: false > msg (ack withSeqNo N) from O to O' if B1 == false and (random(7 * N) rem 2 == 0).
+            < O : Receiver | rcvBuffer : S S1 , rcvCheck :  true false > msg (ack withSeqNo N) from O to O' if B1 == false and (random(7 * N) rem 2 == 0).
 
         crl [rcvNewPacket0AfterRevPacket1] :
-            (msg (S withSeqNo s N) from O' to O) < O : Receiver | rcvBuffer : S0 ++ S1, rcvCheck : B0 :: B1 , greatestSeqNoRcvd : N >
+            (msg (S withSeqNo s N) from O' to O) < O : Receiver | rcvBuffer : S0 S1, rcvCheck : B0 B1 , greatestSeqNoRcvd : N >
         =>
-            < O : Receiver | rcvBuffer : S ++ S1 , rcvCheck :  true :: true  > msg (ack withSeqNo N + 2) from O to O' if B1 == true .
+            < O : Receiver | rcvBuffer : S S1 , rcvCheck :  true true  > msg (ack withSeqNo N + 2) from O to O' if B1 == true .
         
         crl [rcvNewPacket1WORevPacket0] :
-            (msg (S withSeqNo s s N) from O' to O) < O : Receiver | rcvBuffer : S0 ++ S1, rcvCheck : B0 :: B1 , greatestSeqNoRcvd : N >
+            (msg (S withSeqNo s s N) from O' to O) < O : Receiver | rcvBuffer : S0 S1, rcvCheck : B0 B1 , greatestSeqNoRcvd : N >
         =>
-            < O : Receiver | rcvBuffer : S0 ++ S , rcvCheck :  false :: true > msg (ack withSeqNo N) from O to O' if B0 == false .
+            < O : Receiver | rcvBuffer : S0 S , rcvCheck :  false true > msg (ack withSeqNo N) from O to O' if B0 == false .
 
         crl [rcvNewPacket1AfterRevPacket0] :
-            (msg (S withSeqNo s s N) from O' to O) < O : Receiver | rcvBuffer : S0 ++ S1, rcvCheck : B0 :: B1 , greatestSeqNoRcvd : N >
+            (msg (S withSeqNo s s N) from O' to O) < O : Receiver | rcvBuffer : S0 S1, rcvCheck : B0 B1 , greatestSeqNoRcvd : N >
         =>
-            < O : Receiver | rcvBuffer : S0 ++ S , rcvCheck :  true :: true > msg (ack withSeqNo N + 2) from O to O' if B0 == true .
+            < O : Receiver | rcvBuffer : S0 S , rcvCheck :  true true > msg (ack withSeqNo N + 2) from O to O' if B0 == true .
 
         crl [loadWordsFromBuffer] :
-            < O : Receiver | rcvBuffer : S0 ++ S1, msgsRcvd : SL , rcvCheck : BList , greatestSeqNoRcvd : N >
+            < O : Receiver | rcvBuffer : S0 S1, msgsRcvd : SL , rcvCheck : BList , greatestSeqNoRcvd : N >
         => 
-            < O : Receiver | rcvBuffer : mts ++ mts , msgsRcvd :  SL ++ S0 ++ S1, rcvCheck : false :: false, greatestSeqNoRcvd : N + 2 > if allTrue(BList) .
+            < O : Receiver | rcvBuffer : mts mts , msgsRcvd :  SL S0 S1, rcvCheck : false false, greatestSeqNoRcvd : N + 2 > if allTrue(BList) .
 
         crl [rmEmptyString] : 
-            < O : Receiver | msgsRcvd : SL ++ S0 >
+            < O : Receiver | msgsRcvd : SL S0 >
         =>
             < O : Receiver | msgsRcvd : SL > if S0 == mts .
 

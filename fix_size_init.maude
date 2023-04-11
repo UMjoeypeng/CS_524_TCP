@@ -1,4 +1,6 @@
 load message-content.maude
 load message-wrapper.maude
 load message-loss.maude
+load string_list.maude
+load bool_list.maude
 load squno-unordered_window2.maude

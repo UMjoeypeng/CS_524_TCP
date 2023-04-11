@@ -1,0 +1,19 @@
+fmod BOOL-LIST is
+    protecting LIST{Bool} * (sort NeList{Bool} to NeBoolList ,
+                             sort List{Bool} to BoolList ) + INT .
+                             
+    op _[_] : BoolList Int -> Bool .
+    op allTrue : BoolList -> Bool .
+
+    var B : Bool .
+    var BL : BoolList .
+    var N : Int .
+
+    eq tail(nil) = nil .
+    eq head(nil) = nil .
+    eq allTrue(B) = if B == true then true else false fi .
+    eq allTrue(B BL) = allTrue(B) and allTrue(BL) .
+
+    eq BL [ N ] = if N <= 0 then if N == 0 then head(BL) else nil fi else tail(BL) [ N - 1 ] fi .
+
+endfm
