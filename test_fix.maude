@@ -1,1 +1,0 @@
-rew < "Alice" : Sender | msgsToSend : "Sequence" ++ "numbers" ++ "are" ++ "great" ++ "fun", sendBuffer : nil, currentSeqNo : 0, receiver : "Bob" , ackBuffer : false :: false , numWordsInBuffer : 0 , finishSend : false > < "Bob" : Receiver | greatestSeqNoRcvd : 0, msgsRcvd : nil, sender : "Alice" , rcvBuffer : mts ++ mts, rcvCheck : false :: false > .

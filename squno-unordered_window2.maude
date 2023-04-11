@@ -1,5 +1,6 @@
 omod SEQNO-UNORDERED is
     including MESSAGE-LOSS . --- msg wrapper and loss
+    protecting RANDOM .
     protecting STRING + NAT + BOOL .
     sort Content . --- message content without sequence numbers
     subsort String < Content . --- "messages" are just strings
@@ -49,9 +50,13 @@ omod SEQNO-UNORDERED is
         => 
         < O : Sender | msgsToSend : nil, sendBuffer : SL' ++ mts , numWordsInBuffer : s N , currentSeqNo : s N' , finishSend : true , ackBuffer : false :: false > if N < 2 and not B .
 
-    crl [sendCurrentMsgs] :
+    crl [sendCurrentMsgs0] :
         < O : Sender | sendBuffer : S0 ++ S1, currentSeqNo : s N, receiver : O', numWordsInBuffer : N', finishSend : B >
-        =>  < O : Sender | sendBuffer : nil , numWordsInBuffer : 0 > ( msg (S0 withSeqNo N) from O to O' ) ( msg (S1 withSeqNo s N) from O to O' ) if (N' == 2) or B .
+        =>  < O : Sender | sendBuffer : nil , numWordsInBuffer : 0 > ( msg (S0 withSeqNo N) from O to O' ) ( msg (S1 withSeqNo s N) from O to O' ) if ((N' == 2) or B) and (random(N) rem 2 == 0) .
+
+    crl [sendCurrentMsgs1] :
+        < O : Sender | sendBuffer : S0 ++ S1, currentSeqNo : s N, receiver : O', numWordsInBuffer : N', finishSend : B >
+        =>  < O : Sender | sendBuffer : nil , numWordsInBuffer : 0 > ( msg (S1 withSeqNo s N) from O to O' ) ( msg (S0 withSeqNo N) from O to O' )  if ((N' == 2) or B) and (random(N) rem 2 == 1) .
 
     rl [receiveAck0] :
         (msg (ack withSeqNo N) from O' to O) < O : Sender | currentSeqNo : s N, ackBuffer : Ack0 :: Ack1 >
@@ -80,7 +85,7 @@ omod SEQNO-UNORDERED is
         crl [rcvNewPacket0WORevPacket1] :
             (msg (S withSeqNo s N) from O' to O) < O : Receiver | rcvBuffer : S0 ++ S1, rcvCheck : B0 :: B1 , greatestSeqNoRcvd : N >
         =>
-            < O : Receiver | rcvBuffer : S ++ S1 , rcvCheck :  true :: false > msg (ack withSeqNo N) from O to O' if B1 == false .
+            < O : Receiver | rcvBuffer : S ++ S1 , rcvCheck :  true :: false > msg (ack withSeqNo N) from O to O' if B1 == false and (random(7 * N) rem 2 == 0).
 
         crl [rcvNewPacket0AfterRevPacket1] :
             (msg (S withSeqNo s N) from O' to O) < O : Receiver | rcvBuffer : S0 ++ S1, rcvCheck : B0 :: B1 , greatestSeqNoRcvd : N >
