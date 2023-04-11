@@ -1,0 +1,3 @@
+omod MESSAGE-WRAPPER is including MESSAGE-CONTENT .
+    op msg_from_to_ : MsgContent Oid Oid -> Msg [ctor] .
+endom

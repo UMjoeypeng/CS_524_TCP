@@ -1,0 +1,3 @@
+mod MESSAGE-CONTENT is
+    sort MsgContent . --- message content, application-specific
+endm

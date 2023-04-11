@@ -1,0 +1,66 @@
+omod SEQNO-UNORDERED is
+    including MESSAGE-LOSS . --- msg wrapper and loss
+    protecting STRING + NAT + BOOL .
+    sort Content . --- message content without sequence numbers
+    subsort String < Content . --- "messages" are just strings
+    subsort String < Oid .
+    op ack : -> Content [ctor] . --- acknowledgment message
+    --- sequence number wrapper:
+    op _withSeqNo_ : Content Nat -> MsgContent [ctor] .
+    --- lists of strings:
+    sort StringList .
+    subsort String < StringList .
+    op nil : -> StringList [ctor] .
+    op _++_ : StringList StringList -> StringList [ctor assoc id: nil] .
+
+    class Sender | msgsToSend : StringList, currentMsg : StringList, currentSeqNo : Nat, receiver : Oid , ack : Nat .
+
+
+    vars N N' : Nat . 
+    var NZ : NzNat . 
+    vars O O' : Oid .
+    var S : String . 
+    var SL : StringList .
+
+    rl [start] :
+        < O : Sender | msgsToSend : S ++ SL, currentMsg : nil , currentSeqNo : 0 >
+    =>  < O : Sender | msgsToSend : SL, currentMsg : S, currentSeqNo : 1 , ack : 0 > .
+
+    crl [sendCurrentMsg] :
+        < O : Sender | currentMsg : S, currentSeqNo : s N, receiver : O' , ack : N >
+        =>  < O : Sender | currentMsg : nil , currentSeqNo : s s N > msg (S withSeqNo s N) from O to O' if not S == nil .
+
+    rl [receiveCurrentAckNotLast] :
+        (msg (ack withSeqNo s N) from O' to O) < O : Sender | currentSeqNo : s s N, msgsToSend : S ++ SL , ack : N >
+    => < O : Sender | currentSeqNo : s s N , currentMsg : S, msgsToSend : SL , ack : s N > .
+
+    rl [receiveAckLast] : 
+    (msg (ack withSeqNo s N) from O' to O) < O : Sender | currentSeqNo : s s N, msgsToSend : nil >
+    => < O : Sender | currentSeqNo : s N, currentMsg : nil , ack : s N > .
+
+    crl [rcvTooOldAck] : 
+        (msg (ack withSeqNo N) from O' to O) < O : Sender | currentSeqNo : N' >
+    =>
+        < O : Sender | > if N < N' .
+
+    class Receiver | greatestSeqNoRcvd : Nat,
+                    sender : Oid,
+                    msgsRcvd : StringList ,
+                    sendAck : Bool .
+    
+        rl [sendAck] :
+            < O : Receiver | greatestSeqNoRcvd : NZ, sender : O' , sendAck : false >
+        =>
+            < O : Receiver | sendAck : true > msg (ack withSeqNo NZ) from O to O' .
+
+        rl [rcvNewPacket] :
+            (msg (S withSeqNo s N) from O' to O) < O : Receiver | greatestSeqNoRcvd : N, msgsRcvd : SL >
+        =>
+            < O : Receiver | greatestSeqNoRcvd : s N, msgsRcvd : SL ++ S , sendAck : false > .
+
+        crl [rcvOldPacket] :
+            (msg (S withSeqNo N) from O' to O) < O : Receiver | greatestSeqNoRcvd : N' >
+        =>
+            < O : Receiver | > if N <= N' .
+
+endom

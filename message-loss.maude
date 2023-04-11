@@ -1,0 +1,4 @@
+omod MESSAGE-LOSS is including MESSAGE-WRAPPER .
+    var MC : MsgContent . vars O O' : Oid .
+    rl [lose-msg] : msg MC from O to O' => none .
+endom
