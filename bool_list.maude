@@ -4,6 +4,7 @@ fmod BOOL-LIST is
                              
     op _[_] : BoolList Int -> Bool .
     op allTrue : BoolList -> Bool .
+    op pop(_,_) : BoolList Int -> BoolList .
 
     var B : Bool .
     var BL : BoolList .
@@ -16,4 +17,5 @@ fmod BOOL-LIST is
 
     eq BL [ N ] = if N <= 0 then if N == 0 then head(BL) else nil fi else tail(BL) [ N - 1 ] fi .
 
+    eq pop(BL , N) = if N == 0 then tail(BL) else head(BL) (pop(tail(BL), N - 1)) fi .
 endfm

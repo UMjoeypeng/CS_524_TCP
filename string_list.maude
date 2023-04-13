@@ -4,7 +4,7 @@ fmod STRING-LIST is
     op mts : -> String [ctor] . 
 
     op _[_] : StringList Int -> String .
-
+    op pop(_,_) : StringList Int -> StringList .
     var S : String . 
     var SL : StringList .
     var N : Int . 
@@ -13,6 +13,6 @@ fmod STRING-LIST is
     eq head(nil) = nil .
 
     eq SL [ N ] = if N <= 0 then if N == 0 then head(SL) else nil fi else tail(SL) [ N - 1 ] fi .
-
+    eq pop(SL , N) = if N == 0 then tail(SL) else head(SL) (pop(tail(SL), N - 1)) fi .
     
 endfm

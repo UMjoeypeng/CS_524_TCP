@@ -1,4 +1,5 @@
 load message-content.maude
 load message-wrapper.maude
-load message-loss.maude
-load squno-unordered.maude
+load string_list.maude
+load bool_list.maude
+load TCP_Win2.maude

@@ -1,0 +1,24 @@
+view MsgContent from TRIV to MESSAGE-CONTENT is
+  sort Elt to MsgContent .
+endv
+
+mod Msg-LIST is 
+    protecting MESSAGE-CONTENT .
+    protecting LIST{MsgContent} * (sort NeList{MsgContent} to NeMsgList ,
+                             sort List{MsgContent} to MsgList ) + INT .
+    subsort MsgContent < MsgList . 
+    op mtm : -> MsgContent [ctor] . 
+
+    op _[_] : MsgList Int -> MsgContent .
+
+    var S : MsgContent . 
+    var SL : MsgList .
+    var N : Int . 
+
+    eq tail(nil) = nil .
+    eq head(nil) = nil .
+
+    eq SL [ N ] = if N <= 0 then if N == 0 then head(SL) else nil fi else tail(SL) [ N - 1 ] fi .
+
+    
+endm
