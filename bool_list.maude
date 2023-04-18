@@ -14,7 +14,7 @@ fmod BOOL-LIST is
 
     eq tail(nil) = nil .
     eq head(nil) = nil .
-    eq allTrue(B) = if B == true then true else false fi .
+    eq allTrue(B) = B .
     eq allTrue(B BL) = allTrue(B) and allTrue(BL) .
 
     eq BL [ N ] = if N <= 0 then if N == 0 then head(BL) else nil fi else tail(BL) [ N - 1 ] fi .
