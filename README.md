@@ -15,8 +15,11 @@ load init.maude
 ```
 which will load the necessary maude modules.
 
-You may run the following command to test a basic test, which Alice send a sentence to Bob.
+`test_fix_s.maude` and `test_fix_l.maude` are two test cases for the project.
+
+You may run the following command to have a unit test.
+
 ```
 set trace on .
-rew [10] < "Alice" : Sender | msgsToSend : "Sequence" ++ "numbers" ++ "are" ++ "great" ++ "fun", currentMsg : nil, currentSeqNo : 0, receiver : "Bob" , ack : 0 > < "Bob" : Receiver | greatestSeqNoRcvd : 0, msgsRcvd : nil, sender : "Alice" , sendAck : false > .
+load text_fix_s.maude # or load test_fix_l.maude
 ```

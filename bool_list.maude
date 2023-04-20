@@ -1,0 +1,42 @@
+fmod BOOL-LIST is
+    protecting LIST{Bool} * (sort NeList{Bool} to NeBoolList ,
+                             sort List{Bool} to BoolList ) + INT .
+                             
+    op _[_] : BoolList Int -> Bool .
+    op allTrue : BoolList -> Bool .
+    op pop(_,_) : BoolList Int -> BoolList .
+    op n_false : Int -> BoolList .
+    op n_true : Int -> BoolList .
+    op assign(_,_,_) : BoolList Int Bool -> BoolList .
+    op assign(_,_:_,_) : BoolList Int Int Bool -> BoolList .
+    op lastConsecutiveTrue : BoolList -> Int .
+
+    var B : Bool .
+    var BL : BoolList .
+    var N N' : Int .
+
+    eq tail(nil) = nil .
+    eq head(nil) = nil .
+    eq allTrue(B) = B .
+    eq allTrue(B BL) = allTrue(B) and allTrue(BL) .
+
+    eq BL [ N ] = if N <= 0 then if N == 0 then head(BL) else nil fi else tail(BL) [ N - 1 ] fi .
+
+    eq pop(BL , N) = if N == 0 then tail(BL) else head(BL) (pop(tail(BL), N - 1)) fi .
+
+    eq n_false(N) = if N <= 0 then nil else false n_false(N - 1) fi .
+
+    eq n_true(N) = if N <= 0 then nil else true n_true(N - 1) fi .
+
+    eq assign(BL, N, B) = if N < 0 or N >= size(BL) then BL else if N == 0 then B tail(BL) else head(BL) assign(tail(BL), N - 1, B) fi fi .
+
+    eq assign(BL, N : N', B) = if N < 0 or N' >= size(BL) or N > N' 
+                                    then BL 
+                                    else if N == 0 
+                                         then B assign(tail(BL), 0 : N' - 1, B) 
+                                         else head(BL) assign(tail(BL), N - 1 : N' - 1, B) 
+                                         fi 
+                                fi .
+    eq lastConsecutiveTrue(BL) = if head(BL) == false or BL == nil then -1 else     lastConsecutiveTrue(tail(BL)) + 1 fi .
+
+endfm
