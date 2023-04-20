@@ -19,7 +19,7 @@ omod SEQNO-UNORDERED is
     op size : MsgList -> Nat .
     op pop(_,_) : MsgList Int -> MsgList .
 
-    vars N N' N0 N1 : Nat . 
+    vars N N' N0 N1 N2 : Nat . 
     vars I I0 I1 : Int .
     var NZ : NzNat . 
     vars O O' O2 : Oid .
@@ -99,7 +99,7 @@ omod SEQNO-UNORDERED is
         crl [loadWordsFromBuffer] :
             < O : Receiver | rcvBuffer : SL0, msgsRcvd : SL , rcvCheck : BL , greatestSeqNoRcvd : N , bufferSize : N0, bufferStart : I0 , rcvEOF : B0, EOFPos : N1 >
         => 
-            < O : Receiver | rcvBuffer : n_mts(N0) , msgsRcvd :  SL SL0 , rcvCheck : n_false(N0), greatestSeqNoRcvd : N + N0, bufferStart : I0 + N0 > if (allTrue(BL) or (B0 and lastConsecutiveTrue(BL) == N1)).
+            < O : Receiver | rcvBuffer : n_mts(N0) , msgsRcvd :  SL SL0 , rcvCheck : n_false(N0), greatestSeqNoRcvd : N + N0, bufferStart : I0 + N0 > if (allTrue(BL) or (B0 and lastConsecutiveTrue(BL) >= N1)).
 
         crl [rmEmptyString] : 
             < O : Receiver | msgsRcvd : SL S0 >
@@ -112,9 +112,9 @@ omod SEQNO-UNORDERED is
             < O : Receiver | > msg (ack withSeqNo N') from O to O' if N <= N' .
 
         crl [rcvNewPacket] :
-            (msg (S withSeqNo N) from O' to O) < O : Receiver | greatestSeqNoRcvd : N' , bufferStart : N0 , bufferSize : N1 , rcvCheck : BL , rcvBuffer : SL >
+            (msg (S withSeqNo N) from O' to O) < O : Receiver | greatestSeqNoRcvd : N' , bufferStart : N0 , bufferSize : N1 , rcvCheck : BL , rcvBuffer : SL > < O2 : Channel | count : N2 >
         =>
-            < O : Receiver | rcvBuffer : assign(SL, N - N0, S), rcvCheck : assign( BL, N - N0, true )> msg (ack withSeqNo (N0 + lastConsecutiveTrue(assign( BL, N - N0, true )))) from O to O' if N >= N' /\ N < N0 + N1 /\ not (S == EOF) .
+            < O : Receiver | rcvBuffer : assign(SL, N - N0, S), rcvCheck : assign( BL, N - N0, true )> < O2 : Channel | count : s N2 > msg (ack withSeqNo (N0 + lastConsecutiveTrue(assign( BL, N - N0, true )))) from O to O' if N >= N' /\ N < N0 + N1 /\ not (S == EOF) .
 
         crl [rcvEOFPacket] :
             (msg (EOF withSeqNo N) from O' to O) < O : Receiver | greatestSeqNoRcvd : N' , bufferStart : N0 , bufferSize : N1 , rcvCheck : BL , rcvBuffer : SL >
