@@ -2,6 +2,7 @@ fmod STRING-LIST is
     protecting LIST{String} * (sort NeList{String} to NeStringList ,
                              sort List{String} to StringList ) + INT .
     op mts : -> String [ctor] . 
+    op EOF : -> String [ctor] . 
 
     op _[_] : StringList Int -> String .
     op pop(_,_) : StringList Int -> StringList .
