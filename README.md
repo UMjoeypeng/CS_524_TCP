@@ -21,5 +21,5 @@ You may run the following command to have a unit test.
 
 ```
 set trace on .
-load text_fix_s.maude # or load test_fix_l.maude
+load test_fix_s.maude # or load test_fix_l.maude
 ```
