@@ -19,20 +19,21 @@ omod SEQNO-UNORDERED is
     op size : MsgList -> Nat .
     op pop(_,_) : MsgList Int -> MsgList .
 
-    vars N N' N0 N1 N2 : Nat . 
+    vars N N' N0 N1 N2 : Nat .
     vars I I0 I1 : Int .
-    var NZ : NzNat . 
+    var NZ : NzNat .
     vars O O' O2 : Oid .
-    vars S S0 S1 : String . 
+    vars S S0 S1 : String .
     vars SL SL' SL0 : StringList .
     vars B B0 B1 : Bool .
-    vars BList BL BL0 : BoolList . 
-    vars Ack Ack0 Ack1 : Bool . 
+    vars BList BL BL0 : BoolList .
+    vars Ack Ack0 Ack1 : Bool .
     var AckL : BoolList .
     vars M M0 M1 : Msg .
     vars ML ML0 : MsgList .
     var H : Msg .
     var T : MsgList .
+    var X : Int .
 
 
     eq head(H ++ T) = H .
@@ -47,43 +48,43 @@ omod SEQNO-UNORDERED is
     class Channel | msgs : MsgList,
                     count : Nat .
         --- crl [msg-loss] : < O : Channel | msgs : M ++ ML , count : N > => < O : Channel | msgs : ML , count : N + 1 > if random(N) rem 100 == 0 .
-        
+
         crl [convey-msg] : < O : Channel | msgs :  ML , count : N > => < O : Channel | msgs : pop( ML , random(N) rem (size(ML)) ) , count : N + 1 > ((ML) [ random(N) rem (size(ML)) ]) if size(ML) > 0 .
 
 
-    class Sender | msgsToSend : StringList, sendBuffer : MsgList, currentSeqNo : Nat, receiver : Oid, ackBuffer : BoolList, numWordsInBuffer : Nat, finishSend : Bool, channel : Oid, bufferSize : Nat, bufferStart : Int .
+    class Sender | msgsToSend : StringList, sendBuffer : MsgList, currentSeqNo : Nat, receiver : Oid, ackBuffer : BoolList, numWordsInBuffer : Nat, finishSend : Bool, channel : Oid, bufferSize : Nat, bufferStart : Int, actionCount : Int .
 
 
     rl [start] :
-        < O : Sender | currentSeqNo : 0 , bufferSize : N >
-        =>  
-        < O : Sender | ackBuffer : n_true(N) , finishSend : false , bufferStart : 1 - N > .
+        < O : Sender | currentSeqNo : 0 , bufferSize : N , actionCount : I0 >
+        =>
+        < O : Sender | ackBuffer : n_true(N) , finishSend : false , bufferStart : 1 - N , actionCount : I0 + 1 > .
 
-    crl [load_word] : 
-        < O : Sender | msgsToSend : S SL, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , ackBuffer : AckL , finishSend : B , receiver : O', bufferSize : N0, bufferStart : I > 
-        => 
-        < O : Sender | msgsToSend : SL, sendBuffer : (msg (S withSeqNo s N') from O to O') ++ ML, numWordsInBuffer : s N , currentSeqNo : s N' , ackBuffer : n_false(N0) , bufferStart : I + 1 > if ((N == 0 and allTrue(AckL)) or (N < N0 and N > 0)) and not B .
+    crl [load_word] :
+        < O : Sender | msgsToSend : S SL, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , ackBuffer : AckL , finishSend : B , receiver : O', bufferSize : N0, bufferStart : I , actionCount : I0 >
+        =>
+        < O : Sender | msgsToSend : SL, sendBuffer : (msg (S withSeqNo s N') from O to O') ++ ML, numWordsInBuffer : s N , currentSeqNo : s N' , ackBuffer : n_false(N0) , bufferStart : I + 1 , actionCount : I0 + 1 > if ((N == 0 and allTrue(AckL)) or (N < N0 and N > 0)) and not B .
 
-    crl [load_dummy_word] : 
-        < O : Sender | msgsToSend : nil, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , finishSend : B , receiver : O', bufferSize : N0 , bufferStart : I > 
-        => 
-        < O : Sender | msgsToSend : nil, sendBuffer : ML ++ (msg (mts withSeqNo s N') from O to O' ) , numWordsInBuffer : s N , currentSeqNo : s N' , finishSend : true , ackBuffer : n_false(N0) , bufferStart : I + 1 > if N < N0 and not B .
+    crl [load_dummy_word] :
+        < O : Sender | msgsToSend : nil, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , finishSend : B , receiver : O', bufferSize : N0 , bufferStart : I , actionCount : I0 >
+        =>
+        < O : Sender | msgsToSend : nil, sendBuffer : ML ++ (msg (mts withSeqNo s N') from O to O' ) , numWordsInBuffer : s N , currentSeqNo : s N' , finishSend : true , ackBuffer : n_false(N0) , bufferStart : I + 1 , actionCount : I0 + 1 > if N < N0 and not B .
 
     crl [sendCurrentMsgs] :
-        < O : Sender | sendBuffer : ML , numWordsInBuffer : N', finishSend : B , bufferSize : N0 > < O' : Channel | msgs : ML0 , count : N >
-        =>  < O : Sender | sendBuffer : Mnil , numWordsInBuffer : 0 > < O' : Channel | msgs : (ML0 ++ ML) , count : 1 + N > if ((N' == N0) or (B and size(ML) > 0)) .
+        < O : Sender | sendBuffer : ML , numWordsInBuffer : N', finishSend : B , bufferSize : N0 , actionCount : I0 > < O' : Channel | msgs : ML0 , count : N >
+        =>  < O : Sender | sendBuffer : Mnil , numWordsInBuffer : 0 , actionCount : I0 + 1 > < O' : Channel | msgs : (ML0 ++ ML) , count : 1 + N > if ((N' == N0) or (B and size(ML) > 0)) .
 
-    crl [rcvNewAck] : 
+    crl [rcvNewAck] :
         (msg (ack withSeqNo N) from O' to O) < O : Sender | ackBuffer : AckL , bufferStart : N0 >
     => < O : Sender | ackBuffer : assign(AckL, 0 : (N - N0) , true) > if s N > N0 .
 
-    crl [rcvTooOldAck] : 
+    crl [rcvTooOldAck] :
         (msg (ack withSeqNo N) from O' to O) < O : Sender | currentSeqNo : N' >
     =>
         < O : Sender | > if s N < N' .
 
-    
-    
+
+
     class Receiver | greatestSeqNoRcvd : Nat,
                     sender : Oid,
                     msgsRcvd : StringList ,
@@ -94,14 +95,14 @@ omod SEQNO-UNORDERED is
                     bufferStart : Int ,
                     rcvEOF : Bool ,
                     EOFPos : Nat .
-        
+
 
         crl [loadWordsFromBuffer] :
             < O : Receiver | rcvBuffer : SL0, msgsRcvd : SL , rcvCheck : BL , greatestSeqNoRcvd : N , bufferSize : N0, bufferStart : I0 , rcvEOF : B0, EOFPos : N1 >
-        => 
+        =>
             < O : Receiver | rcvBuffer : n_mts(N0) , msgsRcvd :  SL SL0 , rcvCheck : n_false(N0), greatestSeqNoRcvd : N + N0, bufferStart : I0 + N0 > if (allTrue(BL) or (B0 and lastConsecutiveTrue(BL) >= N1)).
 
-        crl [rmEmptyString] : 
+        crl [rmEmptyString] :
             < O : Receiver | msgsRcvd : SL S0 >
         =>
             < O : Receiver | msgsRcvd : SL > if S0 == mts .
@@ -121,6 +122,6 @@ omod SEQNO-UNORDERED is
         =>
             < O : Receiver | rcvBuffer : assign(SL, N - N0, EOF), rcvCheck : assign( BL, N - N0, true ), rcvEOF : true, EOFPos : N - N0 > msg (ack withSeqNo (N0 + lastConsecutiveTrue(assign( BL, N - N0, true )))) from O to O' if N >= N' /\ N < N0 + N1 .
 
-        --- crl [rcvPacketBeyondBuffer] : 
+        --- crl [rcvPacketBeyondBuffer] :
 
 endom
