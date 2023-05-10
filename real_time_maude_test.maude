@@ -1,0 +1,28 @@
+(tomod RTT-1 is
+class Sender | clock : Time, rtt : Time .
+class Responder .
+--- The sender sends a rtt? message with its current clock value and the
+--- responder responds with an rttAck message with the received time stamp:
+msgs rtt? rttAck : Time -> Msg .
+--- An "findRtt" message starts the whole process:
+msg findRtt : -> Msg .
+var O : Oid . vars R R' : Time .
+--- Start round of protocol by sending a rtt? message with current
+--- clock value:
+rl [rttRequest] :
+findRtt < O : Sender | clock : R > => < O : Sender | > rtt?(R) .
+--- read rtt? message and respond with rttAck message:
+rl [rttResponse] :
+rtt?(R) < O : Responder | > => < O : Responder | > rttAck(R) .
+--- read the response rttAck, and deduce the round trip time for this round:
+rl [treatRttResp] :
+rttAck(R) < O : Sender | clock : R' >
+=> < O : Sender | rtt : (R' monus R) > .
+--- Now, we come for the tick rule, where time may elapse
+--- even if there are messages in the system:
+rl [tick] :
+{< O : Sender | clock : R > REST:Configuration}
+=>
+{< O : Sender | clock : R plus R' > REST:Configuration}
+in time R' [nonexec] .
+endtom)
