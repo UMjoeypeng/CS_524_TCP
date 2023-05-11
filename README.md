@@ -65,7 +65,7 @@ load search_to_end.maude
 To search for an terminating state with massage recovery, you can run:
 
 ```bash
-load search_to_end_w_resend.maude
+load search_to_end_with_resend.maude
 ```
 
 To try searching for a bad state that the receiver get the wrong order of the massages, you can run:
