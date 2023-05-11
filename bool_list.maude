@@ -13,7 +13,7 @@ fmod BOOL-LIST is
 
     var B : Bool .
     var BL : BoolList .
-    var N N' : Int .
+    var N N' : Int .    
 
     eq tail(nil) = nil .
     eq head(nil) = nil .
@@ -37,6 +37,5 @@ fmod BOOL-LIST is
                                          else head(BL) assign(tail(BL), N - 1 : N' - 1, B) 
                                          fi 
                                 fi .
-    eq lastConsecutiveTrue(BL) = if head(BL) == false or BL == nil then -1 else     lastConsecutiveTrue(tail(BL)) + 1 fi .
-
+    eq lastConsecutiveTrue(BL) = if head(BL) == false or BL == nil then -1 else lastConsecutiveTrue(tail(BL)) + 1 fi .
 endfm
