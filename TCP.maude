@@ -69,9 +69,9 @@ omod TCP is
                     count : Nat .
                     --- nextMsg : Msg .
 
-        crl [msg-loss] : < O : Channel | msgs :  ML , count : N >  => < O : Channel | msgs : pop( ML , random(N) rem (size(ML)) ) , count : N + 1 > if size(ML) > 0 and (random(N) rem 10 == 0) .
+        crl [msg-loss] : < O : Channel | msgs :  ML , count : N >  => < O : Channel | msgs : pop( ML , random(N) rem (size(ML)) ) , count : N + 1 > if size(ML) > 0 and (random(N) rem 5 == 0) .
         
-        crl [convey-msg] : < O : Channel | msgs :  ML , count : N >   => < O : Channel | msgs : pop( ML , random(N) rem (size(ML)) ) , count : N + 1 > ((ML) [ random(N) rem (size(ML)) ]) if size(ML) > 0 and not (random(N) rem 10 == 0) .
+        crl [convey-msg] : < O : Channel | msgs :  ML , count : N >   => < O : Channel | msgs : pop( ML , random(N) rem (size(ML)) ) , count : N + 1 > ((ML) [ random(N) rem (size(ML)) ]) if size(ML) > 0 and not (random(N) rem 5 == 0) .
         
     
     class Sender | msgsToSend : StringList, 
@@ -99,9 +99,9 @@ omod TCP is
             < O : Sender | msgsToSend : SL, sendBuffer : (msg (S withSeqNo s N') from O to O') ++ ML, numWordsInBuffer : s N , currentSeqNo : s N' , ackBuffer : n_false(N0) , bufferStart : I + 1 > if ((N == 0 and allTrue(AckL)) or (N < N0 and N > 0)) and not B .
 
         crl [load_dummy_word] : 
-            < O : Sender | msgsToSend : nil, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , receiver : O', sendLast : false, bufferSize : N0 , bufferStart : I > 
+            < O : Sender | msgsToSend : nil, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , ackBuffer : AckL, receiver : O', sendLast : false, bufferSize : N0 , bufferStart : I > 
             => 
-            < O : Sender | msgsToSend : nil, sendBuffer : ML ++ (msg (mts withSeqNo s N') from O to O' ) , numWordsInBuffer : s N , currentSeqNo : s N' , ackBuffer : n_false(N0) , bufferStart : I + 1 > if N < N0 - 1 .
+            < O : Sender | msgsToSend : nil, sendBuffer : ML ++ (msg (mts withSeqNo s N') from O to O' ) , numWordsInBuffer : s N , currentSeqNo : s N' , ackBuffer : n_false(N0) , bufferStart : I + 1 > if (N == 0 and allTrue(AckL)) or (N < N0 - 1 and N > 0) .
 
         crl [load_last_dummy_word] : 
             < O : Sender | msgsToSend : nil, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , sendLast : B0 ,finishSend : B , receiver : O', bufferSize : N0 , bufferStart : I > 

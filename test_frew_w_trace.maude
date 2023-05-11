@@ -1,0 +1,4 @@
+load init_frew.maude
+set trace on .
+set trace eqs off .
+load test_frew_l.maude .

@@ -1,4 +1,0 @@
-load init.maude
-set trace on .
-set trace eqs off .
-load test_fix_l.maude .

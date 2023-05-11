@@ -18,7 +18,8 @@ omod TCP is
     sort Time_Configuration .
     var OC : OConfig .
     var NT : NatTime .
-    
+    var ATS : AttributeSet .
+
     op { _ | _ } : Configuration NatTime -> Time_Configuration [ctor] .
 
 
@@ -41,7 +42,7 @@ omod TCP is
     var NZ : NzNat . 
     vars O O' O2 : Oid .
     vars S S0 S1 : String . 
-    vars SL SL' SL0 : StringList .
+    vars SL SL' SL0 SL1 : StringList .
     vars B B0 B1 : Bool .
     vars BList BL BL0 : BoolList . 
     vars Ack Ack0 Ack1 : Bool . 
@@ -52,6 +53,8 @@ omod TCP is
     var T : MsgList .
     var R : OConfig .
     var C : Configuration .
+    var TC : Time_Configuration .
+
 
     eq head(H ++ T) = H .
     eq tail(H ++ T) = T .
@@ -100,9 +103,9 @@ omod TCP is
             < O : Sender | msgsToSend : SL, sendBuffer : (msg (S withSeqNo s N') from O to O') ++ ML, numWordsInBuffer : s N , currentSeqNo : s N' , ackBuffer : n_false(N0) , bufferStart : I + 1 > if ((N == 0 and allTrue(AckL)) or (N < N0 and N > 0)) and not B .
 
         crl [load_dummy_word] : 
-            < O : Sender | msgsToSend : nil, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , receiver : O', sendLast : false, bufferSize : N0 , bufferStart : I > 
+            < O : Sender | msgsToSend : nil, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , receiver : O', ackBuffer : AckL, sendLast : false, bufferSize : N0 , bufferStart : I > 
             => 
-            < O : Sender | msgsToSend : nil, sendBuffer : ML ++ (msg (mts withSeqNo s N') from O to O' ) , numWordsInBuffer : s N , currentSeqNo : s N' , ackBuffer : n_false(N0) , bufferStart : I + 1 > if N < N0 - 1 .
+            < O : Sender | msgsToSend : nil, sendBuffer : ML ++ (msg (mts withSeqNo s N') from O to O' ) , numWordsInBuffer : s N , currentSeqNo : s N' , ackBuffer : n_false(N0) , bufferStart : I + 1 > if (N == 0 and allTrue(AckL)) or (N < N0 - 1 and N > 0) .
 
         crl [load_last_dummy_word] : 
             < O : Sender | msgsToSend : nil, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , sendLast : B0 ,finishSend : B , receiver : O', bufferSize : N0 , bufferStart : I > 
