@@ -1,4 +1,4 @@
-omod SEQNO-UNORDERED is
+omod TCP is
     including MESSAGE-WRAPPER . --- msg wrapper and loss
     protecting RANDOM + STRING + NAT + BOOL + BOOL-LIST + STRING-LIST .
     sort Content . --- message content without sequence numbers
@@ -7,9 +7,22 @@ omod SEQNO-UNORDERED is
     sort OConfig .
     subsort Object < OConfig < Configuration .
     op __ : OConfig OConfig -> OConfig [ctor config assoc comm id: none] .
+    --- op __ : OConfig Msg -> Configuration [ctor config assoc comm id: none] .
     op ack : -> Content [ctor] . --- acknowledgment message
     --- sequence number wrapper:
     op _withSeqNo_ : Content Nat -> MsgContent [ctor] .
+    
+
+    sort NatTime .
+    subsort Nat < NatTime .
+    sort Time_Configuration .
+    var OC : OConfig .
+    var NT : NatTime .
+    
+    op { _ | _ } : Configuration NatTime -> Time_Configuration [ctor] .
+
+
+    op next : -> Msg [ctor] .
 
     sort MsgList .
     subsort Msg < MsgList .
@@ -50,14 +63,16 @@ omod SEQNO-UNORDERED is
     eq pop(T , N) = if N == 0 then tail(T) else head(T) ++ (pop(tail(T), N - 1)) fi .
 
     eq unackPacket(ML , AckL) = if ML == Mnil then Mnil else (if head(AckL) then unackPacket(tail(ML),tail(AckL)) else head(ML) ++ unackPacket(tail(ML),tail(AckL)) fi) fi .
-    eq reverse(ML) = if ML == Mnil then Mnil else tail(ML) ++ head(ML) fi .
+    eq reverse(ML) = if ML == Mnil then Mnil else reverse(tail(ML)) ++ head(ML) fi .
     
     class Channel | msgs : MsgList,
                     count : Nat .
+                    --- nextMsg : Msg .
 
-        crl [msg-loss] : < O : Channel | msgs :  ML , count : N > < O2 : Time | t : N2 >  => < O : Channel | msgs : pop( ML , random(N) rem (size(ML)) ) , count : N + 1 > < O2 : Time | t : s N2 > if size(ML) > 0 and not (random(N) rem 10 == 0) .
+        crl [msg-loss] : < O : Channel | msgs :  ML , count : N >  => < O : Channel | msgs : pop( ML , random(N) rem (size(ML)) ) , count : N + 1 > if size(ML) > 0 and (random(N) rem 10 == 0) .
         
-        crl [convey-msg] : < O : Channel | msgs :  ML , count : N > < O2 : Time | t : N2 >  => < O : Channel | msgs : pop( ML , random(N) rem (size(ML)) ) , count : N + 1 > < O2 : Time | t : s N2 > ((ML) [ random(N) rem (size(ML)) ]) if size(ML) > 0 and not (random(N) rem 10 == 0) .
+        crl [convey-msg] : < O : Channel | msgs :  ML , count : N >   => < O : Channel | msgs : pop( ML , random(N) rem (size(ML)) ) , count : N + 1 > ((ML) [ random(N) rem (size(ML)) ]) if size(ML) > 0 and not (random(N) rem 10 == 0) .
+        
     
     class Sender | msgsToSend : StringList, 
                 sendBuffer : MsgList, 
@@ -65,11 +80,11 @@ omod SEQNO-UNORDERED is
                 receiver : Oid, 
                 ackBuffer : BoolList, 
                 numWordsInBuffer : Nat, 
+                sendLast : Bool,
                 finishSend : Bool, 
                 channel : Oid, 
                 bufferSize : Nat, 
                 bufferStart : Int ,
-                lastSendTime : Nat ,
                 lastSendMsgs : MsgList .
 
 
@@ -84,13 +99,18 @@ omod SEQNO-UNORDERED is
             < O : Sender | msgsToSend : SL, sendBuffer : (msg (S withSeqNo s N') from O to O') ++ ML, numWordsInBuffer : s N , currentSeqNo : s N' , ackBuffer : n_false(N0) , bufferStart : I + 1 > if ((N == 0 and allTrue(AckL)) or (N < N0 and N > 0)) and not B .
 
         crl [load_dummy_word] : 
-            < O : Sender | msgsToSend : nil, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , finishSend : B , receiver : O', bufferSize : N0 , bufferStart : I > 
+            < O : Sender | msgsToSend : nil, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , receiver : O', sendLast : false, bufferSize : N0 , bufferStart : I > 
             => 
-            < O : Sender | msgsToSend : nil, sendBuffer : ML ++ (msg (mts withSeqNo s N') from O to O' ) , numWordsInBuffer : s N , currentSeqNo : s N' , finishSend : true , ackBuffer : n_false(N0) , bufferStart : I + 1 > if N < N0 and not B .
+            < O : Sender | msgsToSend : nil, sendBuffer : ML ++ (msg (mts withSeqNo s N') from O to O' ) , numWordsInBuffer : s N , currentSeqNo : s N' , ackBuffer : n_false(N0) , bufferStart : I + 1 > if N < N0 - 1 .
 
+        crl [load_last_dummy_word] : 
+            < O : Sender | msgsToSend : nil, sendBuffer : ML , numWordsInBuffer : N , currentSeqNo : N' , sendLast : B0 ,finishSend : B , receiver : O', bufferSize : N0 , bufferStart : I > 
+            => 
+            < O : Sender | msgsToSend : nil, sendBuffer : ML ++ (msg (mts withSeqNo s N') from O to O' ) , numWordsInBuffer : s N , currentSeqNo : s N' , sendLast : true , ackBuffer : n_false(N0) , bufferStart : I + 1 > if N == (N0 - 1) .
+        
         crl [sendCurrentMsgs] :
-            < O : Sender | sendBuffer : ML , numWordsInBuffer : N', finishSend : B , bufferSize : N0 > < O' : Channel | msgs : ML0 , count : N > < O2 : Time | t : N2 >
-            =>  < O : Sender | sendBuffer : Mnil , numWordsInBuffer : 0 , lastSendTime : N2 , lastSendMsgs : ML > < O' : Channel | msgs : (ML0 ++ ML) , count : 1 + N > < O2 : Time | > if ((N' == N0) or (B and size(ML) > 0)) .
+            < O : Sender | sendBuffer : ML , numWordsInBuffer : N', finishSend : B , bufferSize : N0 > < O' : Channel | msgs : ML0 , count : N > 
+            =>  < O : Sender | sendBuffer : Mnil , numWordsInBuffer : 0 , lastSendMsgs : ML > < O' : Channel | msgs : (ML0 ++ ML) , count : 1 + N >  if ((N' == N0) and not B) .
 
         crl [rcvNewAck] : 
             (msg (ack withSeqNo N) from O' to O) < O : Sender | ackBuffer : AckL , bufferStart : N0 >
@@ -103,9 +123,14 @@ omod SEQNO-UNORDERED is
 
 
         crl [resendMsgs] : 
-            < O : Sender | ackBuffer : AckL , lastSendTime : N, lastSendMsgs : ML , finishSend : B > < O' : Channel | msgs : ML0 , count : N  > < O2 : Time | t : N2 >
+            { < O : Sender | ackBuffer : AckL , lastSendMsgs : ML , finishSend : false, sendBuffer : Mnil > < O' : Channel | msgs : Mnil , count : s N > R | NT }
         => 
-            < O : Sender | lastSendTime : N2 > < O' : Channel | msgs : unackPacket(reverse(ML),AckL) ++ ML0 , count : s N > < O2 : Time | > if (N2 - N) > 5 .
+            { < O : Sender |  > < O' : Channel | msgs : unackPacket(reverse(ML),AckL), count : N + 2 > R | NT + 1 } if not allTrue(AckL) .
+
+        crl [finishSend] : 
+            < O : Sender | sendLast : true, ackBuffer : AckL , finishSend : false, lastSendMsgs : ML >
+        => 
+            < O : Sender | finishSend : true , lastSendMsgs : Mnil > if allTrue(AckL) .
 
     class Receiver | greatestSeqNoRcvd : Nat,
                     sender : Oid,
@@ -135,20 +160,13 @@ omod SEQNO-UNORDERED is
             < O : Receiver | > msg (ack withSeqNo N') from O to O' if N <= N' .
 
         crl [rcvNewPacket] :
-            (msg (S withSeqNo N) from O' to O) < O : Receiver | greatestSeqNoRcvd : N' , bufferStart : N0 , bufferSize : N1 , rcvCheck : BL , rcvBuffer : SL > < O2 : Channel | count : N2 >
+            (msg (S withSeqNo N) from O' to O) < O : Receiver | greatestSeqNoRcvd : N' , bufferStart : N0 , bufferSize : N1 , rcvCheck : BL , rcvBuffer : SL > < O2 : Channel | count : N2, msgs : ML >
         =>
-            < O : Receiver | rcvBuffer : assign(SL, N - N0, S), rcvCheck : assign( BL, N - N0, true )> < O2 : Channel | count : s N2 > msg (ack withSeqNo (N0 + lastConsecutiveTrue(assign( BL, N - N0, true )))) from O to O' if N >= N' /\ N < N0 + N1 /\ not (S == EOF) .
+            < O : Receiver | rcvBuffer : assign(SL, N - N0, S), rcvCheck : assign( BL, N - N0, true) > < O2 : Channel | count : s N2, msgs : ML ++ msg (ack withSeqNo (N0 + lastConsecutiveTrue(assign( BL, N - N0, true )))) from O to O' >   if N >= N' /\ N < N0 + N1 /\ not (S == EOF) .
 
         crl [rcvEOFPacket] :
             (msg (EOF withSeqNo N) from O' to O) < O : Receiver | greatestSeqNoRcvd : N' , bufferStart : N0 , bufferSize : N1 , rcvCheck : BL , rcvBuffer : SL >
         =>
             < O : Receiver | rcvBuffer : assign(SL, N - N0, EOF), rcvCheck : assign( BL, N - N0, true ), rcvEOF : true, EOFPos : N - N0 > msg (ack withSeqNo (N0 + lastConsecutiveTrue(assign( BL, N - N0, true )))) from O to O' if N >= N' /\ N < N0 + N1 .
-
-        --- crl [rcvPacketBeyondBuffer] : 
-
-    class Time | t : Nat .
-        rl [tik] : < O : Time | t : N > R => < O : Time | t : s N > R .
-    
-
 
 endom
