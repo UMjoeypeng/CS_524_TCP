@@ -236,6 +236,7 @@ class Channel | msgs : MsgList,
         if size(ML) > 0 and not (random(N) rem 5 == 0) .
 ```
 
+
 `Channel` class serves as the container of all messages during transmission, and will simulate the situation when a message is successfully transmitted or lost.
 
 * `msgs`: All the messages need to be transmitted, including the messages from sender to receiver and the acknowledges from receiver to sender.
@@ -302,6 +303,7 @@ class Sender | msgsToSend : StringList,
             < O : Sender | sendLast : true, ackBuffer : AckL , finishSend : false, lastSendMsgs : ML >
         => 
             < O : Sender | finishSend : true , lastSendMsgs : Mnil > if allTrue(AckL) .
+
 ```
 
 * `msgsToSend`: All the messages that has not been sent yet.
